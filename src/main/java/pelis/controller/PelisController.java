@@ -42,7 +42,8 @@ public class PelisController {
 			// Validación del JSON
 			if (!obj.has("usuari") || !obj.has("titol")) {
 				// Manejar caso en que los campos necesarios no estén presentes
-				resposta = false;
+				return resposta = false;
+				
 			}
 
 			String usuari = obj.getString("usuari");
