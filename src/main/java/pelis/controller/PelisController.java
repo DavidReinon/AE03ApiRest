@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import clases.FiltreExtensio;
+import jakarta.servlet.http.HttpServletResponse;
 
 @RestController
 @RequestMapping("/APIpelis")
@@ -26,101 +27,112 @@ public class PelisController {
 
 	@GetMapping("/t")
 	@ResponseBody
-	String mostrarPelis(@RequestParam(name = "id", defaultValue = "") String id) {
+	String mostrarPelis(@RequestParam(name = "id", defaultValue = "") String id, HttpServletResponse response) {
 		String resultat = "";
 		if (id.equals("all")) {
 			resultat = obtenerInfoTodasLasPelis().toString(2);
-			if (resultat != null)
+			if (resultat != null) {
+				response.setStatus(202);
 				return resultat;
-			return "Error: No ni han pelicules que mostrar";
+			}
+			response.setStatus(404);
+			return "Error 404: No ni han pelicules que mostrar";
 		}
 		resultat = obtenerInfoPeli(id).toString(2);
-		if (resultat != null)
+		if (resultat != null) {
+			response.setStatus(202);
 			return resultat;
-		return "Error: No se ha trobat la pelicula";
+		}
+		response.setStatus(404);
+		return "Error 404: No se ha trobat la pelicula";
 	}
 
 	@PostMapping("/novaPeli")
-	ResponseEntity<Void> novaPeli(@RequestBody String jsonNovaPeli) {
-		if (insertarPeli(jsonNovaPeli)) {
-			return new ResponseEntity<>(HttpStatus.ACCEPTED);
-		} else {
-			return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
-		}
+	ResponseEntity<String> novaPeli(@RequestBody String jsonNovaPeli) {
+		return insertarPeli(jsonNovaPeli);
 
 	}
 
 	@PostMapping("/novaRessenya")
-	ResponseEntity<Void> novaRessenya(@RequestBody String jsonNovaPeli) {
-		if(usuarioAutorizado())
-		if (insertarResenya(jsonNovaPeli)) {
-			return new ResponseEntity<>(HttpStatus.ACCEPTED);
-		} else {
-			return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+	ResponseEntity<String> novaRessenya(@RequestBody String jsonNovaPeli) {
+		return insertarResenya(jsonNovaPeli);
+
+	}
+
+	@PostMapping("/nouUsuari")
+	ResponseEntity<String> nouUsuari(@RequestBody String jsonNouUsuari) {
+		return registrarUsuari(jsonNouUsuari);
+	}
+
+	private ResponseEntity<String> procesarResposta(int numeroResposta) {
+		switch (numeroResposta) {
+		case 401:
+			return new ResponseEntity<>("Error 401: No autorizado", HttpStatus.UNAUTHORIZED);
+		case 400:
+			return new ResponseEntity<>("Error 400: Solicitud mal formada", HttpStatus.BAD_REQUEST);
+		case 404:
+			return new ResponseEntity<>("Error 404: Recurso no encontrado", HttpStatus.NOT_FOUND);
+		case 202:
+			return new ResponseEntity<>("Operación exitosa", HttpStatus.ACCEPTED);
+		case 500:
+			return new ResponseEntity<>("Operación exitosa", HttpStatus.INTERNAL_SERVER_ERROR);
+		default:
+			return new ResponseEntity<>("Operación exitosa", HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 
 	}
-	
-	@PostMapping("/nouUsuari")
-    ResponseEntity<Void> nouUsuari(@RequestBody String jsonNouUsuari) {
-        if (registrarUsuari(jsonNouUsuari)) {
-            return new ResponseEntity<>(HttpStatus.ACCEPTED);
-        } else {
-            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
-        }
-    }
 
-    private boolean usuarioAutorizado(String usuari) {
-        try {
-            File autoritzats = new File("autoritzats.txt");
+	private boolean usuarioAutorizado(String usuari) {
+		try {
+			File autoritzats = new File("autoritzats.txt");
 
-            if (!autoritzats.exists()) {
-                return false;
-            }
+			if (!autoritzats.exists()) {
+				return false;
+			}
 
-            BufferedReader br = new BufferedReader(new FileReader(autoritzats));
-            String line;
+			BufferedReader br = new BufferedReader(new FileReader(autoritzats));
+			String line;
 
-            while ((line = br.readLine()) != null) {
-                if (line.trim().equals(usuari)) {
-                    return true;
-                }
-            }
+			while ((line = br.readLine()) != null) {
+				if (line.trim().equals(usuari)) {
+					return true;
+				}
+			}
 
-            br.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+			br.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 
-        return false;
-    }
+		return false;
+	}
 
-    private boolean registrarUsuari(String jsonNouUsuari) {
-        try {
-            JSONObject obj = new JSONObject(jsonNouUsuari);
+	private ResponseEntity<String> registrarUsuari(String jsonNouUsuari) {
+		try {
+			JSONObject obj = new JSONObject(jsonNouUsuari);
 
-            if (!obj.has("usuari")) {
-                return false;
-            }
+			if (!obj.has("usuari")) {
+				return procesarResposta(400);
+			}
 
-            String nouUsuari = obj.getString("usuari");
+			String nouUsuari = obj.getString("usuari");
 
-            File autoritzats = new File("autoritzats.txt");
+			File autoritzats = new File("autoritzats.txt");
 
-            if (!autoritzats.exists()) {
-                autoritzats.createNewFile();
-            }
+			if (!autoritzats.exists()) {
+				autoritzats.createNewFile();
+			}
 
-            try (FileWriter fw = new FileWriter(autoritzats, true)) {
-                fw.write(nouUsuari + "\n");
-            }
+			try (FileWriter fw = new FileWriter(autoritzats, true)) {
+				fw.write(nouUsuari + "\n");
+			}
 
-            return true;
-        } catch (Exception e) {
-            e.printStackTrace();
-            return false;
-        }
-    }
+			return procesarResposta(202);
+		} catch (Exception e) {
+			e.printStackTrace();
+			return procesarResposta(500);
+		}
+	}
 
 	private JSONObject obtenerInfoPeli(String id) {
 		try {
@@ -208,14 +220,14 @@ public class PelisController {
 		return jsonObjectFinal;
 	}
 
-	private boolean insertarResenya(String jsonNovaPeli) {
+	private ResponseEntity<String> insertarResenya(String jsonNovaPeli) {
 		try {
 			JSONObject obj = new JSONObject(jsonNovaPeli);
 
 			// Validación del JSON
 			if (!obj.has("usuari") || !obj.has("id") || !obj.has("ressenya")) {
 				// Manejar caso en que los campos necesarios no estén presentes
-				return false;
+				return procesarResposta(400);
 
 			}
 
@@ -223,9 +235,13 @@ public class PelisController {
 			String id = obj.getString("id");
 			String ressenya = obj.getString("ressenya");
 
+			if (!usuarioAutorizado(usuari)) {
+				return procesarResposta(401);
+			}
+
 			File directori = new File("pelis");
 			if (!directori.exists()) {
-				return false;
+				return procesarResposta(404);
 			}
 
 			// Obtener la lista de archivos en el directorio
@@ -241,7 +257,7 @@ public class PelisController {
 			}
 
 			if (!archivoExistente) {
-				return false;
+				return procesarResposta(404);
 			}
 
 			File estaPelicula = new File(directori, id + ".txt");
@@ -252,26 +268,29 @@ public class PelisController {
 			}
 
 		} catch (Exception e) {
-			return false;
+			return procesarResposta(500);
 		}
-		return true;
+		return procesarResposta(202);
 
 	}
 
-	private boolean insertarPeli(String jsonNovaPeli) {
-		boolean resposta = true;
+	private ResponseEntity<String> insertarPeli(String jsonNovaPeli) {
 		try {
 			JSONObject obj = new JSONObject(jsonNovaPeli);
 
 			// Validación del JSON
 			if (!obj.has("usuari") || !obj.has("titol")) {
 				// Manejar caso en que los campos necesarios no estén presentes
-				return resposta = false;
+				return procesarResposta(400);
 
 			}
 
 			String usuari = obj.getString("usuari");
 			String titol = obj.getString("titol");
+
+			if (!usuarioAutorizado(usuari)) {
+				return procesarResposta(401);
+			}
 
 			File directori = new File("pelis");
 			if (!directori.exists()) {
@@ -292,10 +311,8 @@ public class PelisController {
 				fw.write("Titol: " + titol + "\n");
 			}
 		} catch (Exception e) {
-			e.printStackTrace();
-			resposta = false;
-
+			return procesarResposta(500);
 		}
-		return resposta;
+		return procesarResposta(202);
 	}
 }
