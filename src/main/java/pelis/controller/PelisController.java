@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
+import java.io.IOException;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -51,6 +52,7 @@ public class PelisController {
 
 	@PostMapping("/novaRessenya")
 	ResponseEntity<Void> novaRessenya(@RequestBody String jsonNovaPeli) {
+		if(usuarioAutorizado())
 		if (insertarResenya(jsonNovaPeli)) {
 			return new ResponseEntity<>(HttpStatus.ACCEPTED);
 		} else {
@@ -58,6 +60,67 @@ public class PelisController {
 		}
 
 	}
+	
+	@PostMapping("/nouUsuari")
+    ResponseEntity<Void> nouUsuari(@RequestBody String jsonNouUsuari) {
+        if (registrarUsuari(jsonNouUsuari)) {
+            return new ResponseEntity<>(HttpStatus.ACCEPTED);
+        } else {
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    private boolean usuarioAutorizado(String usuari) {
+        try {
+            File autoritzats = new File("autoritzats.txt");
+
+            if (!autoritzats.exists()) {
+                return false;
+            }
+
+            BufferedReader br = new BufferedReader(new FileReader(autoritzats));
+            String line;
+
+            while ((line = br.readLine()) != null) {
+                if (line.trim().equals(usuari)) {
+                    return true;
+                }
+            }
+
+            br.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return false;
+    }
+
+    private boolean registrarUsuari(String jsonNouUsuari) {
+        try {
+            JSONObject obj = new JSONObject(jsonNouUsuari);
+
+            if (!obj.has("usuari")) {
+                return false;
+            }
+
+            String nouUsuari = obj.getString("usuari");
+
+            File autoritzats = new File("autoritzats.txt");
+
+            if (!autoritzats.exists()) {
+                autoritzats.createNewFile();
+            }
+
+            try (FileWriter fw = new FileWriter(autoritzats, true)) {
+                fw.write(nouUsuari + "\n");
+            }
+
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
 
 	private JSONObject obtenerInfoPeli(String id) {
 		try {
