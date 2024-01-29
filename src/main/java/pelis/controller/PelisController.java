@@ -64,6 +64,14 @@ public class PelisController {
 		return registrarUsuari(jsonNouUsuari);
 	}
 
+	/**
+	 * Procesa el número de respuesta y devuelve una ResponseEntity con un mensaje
+	 * correspondiente.
+	 *
+	 * @param numeroResposta Número de respuesta a procesar.
+	 * @return ResponseEntity con un mensaje y el código de estado HTTP
+	 *         correspondiente.
+	 */
 	private ResponseEntity<String> procesarResposta(int numeroResposta) {
 		switch (numeroResposta) {
 		case 401:
@@ -82,6 +90,12 @@ public class PelisController {
 
 	}
 
+	/**
+	 * Verifica si un usuario está autorizado.
+	 *
+	 * @param usuari Nombre de usuario a verificar.
+	 * @return true si el usuario está autorizado, false si no lo está.
+	 */
 	private boolean usuarioAutorizado(String usuari) {
 		try {
 			File autoritzats = new File("autoritzats.txt");
@@ -95,6 +109,7 @@ public class PelisController {
 
 			while ((line = br.readLine()) != null) {
 				if (line.trim().equals(usuari)) {
+					br.close();
 					return true;
 				}
 			}
@@ -107,6 +122,13 @@ public class PelisController {
 		return false;
 	}
 
+	/**
+	 * Registra un nuevo usuario.
+	 *
+	 * @param jsonNouUsuari JSON con la información del nuevo usuario.
+	 * @return ResponseEntity con un mensaje y el código de estado HTTP
+	 *         correspondiente.
+	 */
 	private ResponseEntity<String> registrarUsuari(String jsonNouUsuari) {
 		try {
 			JSONObject obj = new JSONObject(jsonNouUsuari);
@@ -134,6 +156,13 @@ public class PelisController {
 		}
 	}
 
+	/**
+	 * Obtiene la información de una película específica.
+	 *
+	 * @param id ID de la película.
+	 * @return JSONObject con la información de la película o null si no se
+	 *         encuentra.
+	 */
 	private JSONObject obtenerInfoPeli(String id) {
 		try {
 			File fitxer = new File("pelis", id + ".txt");
@@ -176,6 +205,12 @@ public class PelisController {
 		}
 	}
 
+	/**
+	 * Obtiene la información de todas las películas.
+	 *
+	 * @return JSONObject con un array de objetos JSON que representan las
+	 *         películas.
+	 */
 	private JSONObject obtenerInfoTodasLasPelis() {
 		// Crear un array JSON para almacenar los objetos JSON de cada archivo
 		JSONArray jsonArray = new JSONArray();
@@ -220,9 +255,16 @@ public class PelisController {
 		return jsonObjectFinal;
 	}
 
-	private ResponseEntity<String> insertarResenya(String jsonNovaPeli) {
+	/**
+	 * Inserta una nueva reseña para una película existente.
+	 *
+	 * @param jsonNovaRessenya JSON con la información de la nueva reseña.
+	 * @return ResponseEntity con un mensaje y el código de estado HTTP
+	 *         correspondiente.
+	 */
+	private ResponseEntity<String> insertarResenya(String jsonNovaRessenya) {
 		try {
-			JSONObject obj = new JSONObject(jsonNovaPeli);
+			JSONObject obj = new JSONObject(jsonNovaRessenya);
 
 			// Validación del JSON
 			if (!obj.has("usuari") || !obj.has("id") || !obj.has("ressenya")) {
@@ -274,6 +316,13 @@ public class PelisController {
 
 	}
 
+	/**
+	 * Inserta una nueva película.
+	 *
+	 * @param jsonNovaPeli JSON con la información de la nueva película.
+	 * @return ResponseEntity con un mensaje y el código de estado HTTP
+	 *         correspondiente.
+	 */
 	private ResponseEntity<String> insertarPeli(String jsonNovaPeli) {
 		try {
 			JSONObject obj = new JSONObject(jsonNovaPeli);
