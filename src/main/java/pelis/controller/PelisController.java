@@ -29,22 +29,22 @@ public class PelisController {
 	@ResponseBody
 	String mostrarPelis(@RequestParam(name = "id", defaultValue = "") String id, HttpServletResponse response) {
 		String resultat = "";
+		String missatge = "";
 		if (id.equals("all")) {
-			resultat = obtenerInfoTodasLasPelis().toString(2);
-			if (resultat != null) {
-				response.setStatus(202);
-				return resultat;
-			}
+			resultat = obtenerInfoTodasLasPelis();
+			missatge = "Error 500: Error Intern";
+		} else {
+			resultat = obtenerInfoPeli(id);
+			missatge = "Error 404: No se ha trobat la pelicula";
+		}
+
+		if (resultat.equals("error")) {
 			response.setStatus(404);
-			return "Error 404: No ni han pelicules que mostrar";
+			return missatge;
 		}
-		resultat = obtenerInfoPeli(id).toString(2);
-		if (resultat != null) {
-			response.setStatus(202);
-			return resultat;
-		}
-		response.setStatus(404);
-		return "Error 404: No se ha trobat la pelicula";
+
+		response.setStatus(202);
+		return resultat;
 	}
 
 	@PostMapping("/novaPeli")
@@ -163,16 +163,16 @@ public class PelisController {
 	 * @return JSONObject con la información de la película o null si no se
 	 *         encuentra.
 	 */
-	private JSONObject obtenerInfoPeli(String id) {
+	private String obtenerInfoPeli(String id) {
+		// Crear un objeto JSON para almacenar la información de la película
+		JSONObject infoPeliJson = new JSONObject();
+
 		try {
 			File fitxer = new File("pelis", id + ".txt");
 
 			if (!fitxer.exists()) {
-				return null; // No se encontró la película
+				return "error"; // No se encontró la película
 			}
-
-			// Crear un objeto JSON para almacenar la información de la película
-			JSONObject infoPeliJson = new JSONObject();
 
 			// Configurar el ID y el título en el objeto JSON
 			infoPeliJson.put("id", id);
@@ -198,11 +198,10 @@ public class PelisController {
 				infoPeliJson.put("ressenyes", ressenyesArray);
 			}
 
-			return infoPeliJson;
-
 		} catch (Exception e) {
-			return null;
+			return "error";
 		}
+		return infoPeliJson.toString(2);
 	}
 
 	/**
@@ -211,14 +210,18 @@ public class PelisController {
 	 * @return JSONObject con un array de objetos JSON que representan las
 	 *         películas.
 	 */
-	private JSONObject obtenerInfoTodasLasPelis() {
+	private String obtenerInfoTodasLasPelis() {
+		// Crear un objeto JSON final con el array de películas
+		JSONObject jsonObjectFinal = new JSONObject();
+
 		// Crear un array JSON para almacenar los objetos JSON de cada archivo
 		JSONArray jsonArray = new JSONArray();
 		try {
 
 			File directori = new File("pelis");
 			if (!directori.exists()) {
-				return null;
+				jsonObjectFinal.put("titols", jsonArray);
+				return jsonObjectFinal.toString(2);
 			}
 
 			// Obtener la lista de archivos en el directorio
@@ -246,13 +249,10 @@ public class PelisController {
 			}
 
 		} catch (Exception e) {
-			return null;
+			return "error";
 		}
-		// Crear un objeto JSON final con el array de películas
-		JSONObject jsonObjectFinal = new JSONObject();
 		jsonObjectFinal.put("titols", jsonArray);
-
-		return jsonObjectFinal;
+		return jsonObjectFinal.toString(2);
 	}
 
 	/**
